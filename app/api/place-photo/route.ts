@@ -70,8 +70,19 @@ export async function POST(request: Request) {
       return Response.json({ error: photoResult.error?.message || "Google Places n’a pas renvoyé la photo." }, { status: 502 });
     }
 
+    // On télécharge l’image côté serveur et on la renvoie en base64 : ça évite tout souci de
+    // CORS quand html2canvas capture la brochure pour l’export PDF (comme les visuels IA).
+    const imageResponse = await fetch(photoResult.photoUri);
+    if (!imageResponse.ok) {
+      return Response.json({ error: "La photo Google Places n’a pas pu être téléchargée." }, { status: 502 });
+    }
+    const imageBytes = new Uint8Array(await imageResponse.arrayBuffer());
+    let binary = "";
+    imageBytes.forEach((byte) => (binary += String.fromCharCode(byte)));
+    const mimeType = imageResponse.headers.get("content-type") || "image/jpeg";
+
     return Response.json({
-      imageUrl: photoResult.photoUri,
+      imageUrl: `data:${mimeType};base64,${btoa(binary)}`,
       placeName: place?.displayName?.text || query,
       source: "Google Places",
     });

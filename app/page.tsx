@@ -17,6 +17,7 @@ import {
   Minus,
   Palette,
   Plus,
+  Search,
   Sparkles,
   SunMedium,
   Trash2,
@@ -39,6 +40,8 @@ type TripDay = {
   details: string;
   imageUrl: string;
   aiImage?: string;
+  placeQuery?: string;
+  placePhoto?: string;
 };
 
 type Trip = {
@@ -227,6 +230,7 @@ export default function Home() {
   const [trip, setTrip] = useState<Trip>(initialTrip);
   const [openDay, setOpenDay] = useState<number | null>(1);
   const [generating, setGenerating] = useState<number[]>([]);
+  const [searchingPlace, setSearchingPlace] = useState<number[]>([]);
   const [notice, setNotice] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const [authState, setAuthState] = useState<"loading" | "authenticated" | "unauthenticated" | "error">("loading");
@@ -342,6 +346,46 @@ export default function Home() {
     setTrip((current) => ({
       ...current,
       days: current.days.map((item) => (item.id === day.id ? { ...item, aiImage: undefined } : item)),
+    }));
+  };
+
+  const searchPlacePhoto = (day: TripDay) => {
+    const query = day.placeQuery?.trim();
+    if (!query) {
+      setNotice("Indique le nom exact de l’hôtel ou de l’excursion à rechercher.");
+      window.setTimeout(() => setNotice(""), 3200);
+      return;
+    }
+    if (searchingPlace.includes(day.id) || day.placePhoto) return;
+    setSearchingPlace((current) => [...current, day.id]);
+
+    void fetch("/api/place-photo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, country: day.location }),
+    })
+      .then(async (response) => {
+        const result = await response.json() as { imageUrl?: string; placeName?: string; error?: string };
+        if (!response.ok || !result.imageUrl) throw new Error(result.error || "Aucune photo trouvée pour ce lieu.");
+        setTrip((current) => ({
+          ...current,
+          days: current.days.map((item) => (item.id === day.id ? { ...item, placePhoto: result.imageUrl } : item)),
+        }));
+        setNotice(`Photo réelle trouvée : ${result.placeName || query}.`);
+      })
+      .catch((error: unknown) => {
+        setNotice(error instanceof Error ? error.message : "La photo n’a pas pu être trouvée.");
+      })
+      .finally(() => {
+        setSearchingPlace((current) => current.filter((item) => item !== day.id));
+        window.setTimeout(() => setNotice(""), 3200);
+      });
+  };
+
+  const resetPlacePhoto = (day: TripDay) => {
+    setTrip((current) => ({
+      ...current,
+      days: current.days.map((item) => (item.id === day.id ? { ...item, placePhoto: undefined } : item)),
     }));
   };
 
@@ -620,6 +664,7 @@ export default function Home() {
               {trip.days.map((day, index) => {
                 const isOpen = openDay === day.id;
                 const isGenerating = generating.includes(day.id);
+                const isSearchingPlace = searchingPlace.includes(day.id);
                 return (
                   <div key={day.id} className={cn("day-editor rounded-2xl border", isOpen ? "border-[#c8dcd8] bg-[#f8fbfa]" : "border-transparent bg-[#f6f8f7]")}>
                     <button type="button" onClick={() => setOpenDay(isOpen ? null : day.id)} className="flex w-full items-center gap-3 px-3 py-3 text-left">
@@ -657,6 +702,18 @@ export default function Home() {
                             </Button>
                           )}
                           {day.aiImage && <Button type="button" onClick={() => resetImage(day)} aria-label="Réinitialiser le visuel" variant="outline" size="icon-sm" className="rounded-xl border border-[#d9e3e1] bg-white text-[#173c4b] hover:bg-[#f5faf8]">
+                            <Trash2 className="size-4" />
+                          </Button>}
+                        </div>
+                        <Field label="Nom exact de l’hôtel ou de l’excursion">
+                          <Input value={day.placeQuery || ""} onChange={(event) => updateDay(day.id, "placeQuery", event.target.value)} placeholder="ex. Riad Kheirredine, Marrakech" className="editor-input" />
+                        </Field>
+                        <div className="flex items-center gap-2">
+                          <Button type="button" onClick={() => searchPlacePhoto(day)} disabled={isSearchingPlace || Boolean(day.placePhoto)} size="sm" variant="outline" className="h-9 flex-1 rounded-xl border-[#3d7772] text-[#3d7772] hover:bg-[#f4faf8]">
+                            {isSearchingPlace ? <LoaderCircle className="size-4 animate-spin" /> : day.placePhoto ? <Check className="size-4" /> : <Search className="size-4" />}
+                            {isSearchingPlace ? "Recherche…" : day.placePhoto ? "Photo réelle trouvée" : "Chercher une photo réelle"}
+                          </Button>
+                          {day.placePhoto && <Button type="button" onClick={() => resetPlacePhoto(day)} aria-label="Réinitialiser la photo réelle" variant="outline" size="icon-sm" className="rounded-xl border border-[#d9e3e1] bg-white text-[#173c4b] hover:bg-[#f5faf8]">
                             <Trash2 className="size-4" />
                           </Button>}
                         </div>
@@ -712,13 +769,17 @@ export default function Home() {
 
                 <div className="space-y-7">
                   {trip.days.map((day, index) => {
-                    const image = day.aiImage || day.imageUrl || resolveDayImage(day.location, day.title, index);
+                    const image = day.aiImage || day.placePhoto || day.imageUrl || resolveDayImage(day.location, day.title, index);
                     return (
                       <article key={day.id} className="break-inside-avoid grid gap-5 border-b border-[#ddd9d1] pb-7 last:border-0 sm:grid-cols-[146px_minmax(0,1fr)] sm:gap-7">
                         <div className="relative">
                           <img src={image} alt={`${day.location} — ${day.title}`} crossOrigin="anonymous" className="h-[118px] w-full rounded-[14px] object-cover sm:h-[146px]" />
                           <span className="absolute -left-2 -top-2 flex size-8 items-center justify-center rounded-full bg-[#e36e5a] text-xs font-bold text-white shadow-[0_4px_10px_rgba(227,110,90,0.28)]">{index + 1}</span>
-                          {day.aiImage && <span className="absolute bottom-2 left-2 rounded-full bg-[#123446]/90 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-[#f6bb65]">Visuel IA</span>}
+                          {day.aiImage ? (
+                            <span className="absolute bottom-2 left-2 rounded-full bg-[#123446]/90 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-[#f6bb65]">Visuel IA</span>
+                          ) : day.placePhoto ? (
+                            <span className="absolute bottom-2 left-2 rounded-full bg-[#123446]/90 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-[#8fd6c4]">Photo réelle</span>
+                          ) : null}
                         </div>
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#d6705e]"><span>{shortDate(day.date)}</span><span className="text-[#a6b8bb]">•</span><span>{day.location}</span></div>
