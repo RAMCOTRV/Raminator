@@ -1,6 +1,38 @@
-# vinext-starter
+# Ramco Brochure Studio
 
-A clean full-stack starter running on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.
+Éditeur de brochures de voyage pour **Ramco**, agence basée à Tunis. L’outil permet de personnaliser un programme jour par jour, de générer des visuels avec Gemini et de télécharger une brochure PDF élégante, chaleureuse et prête à envoyer au client.
+
+## Fonctionnalités
+
+- personnalisation de la destination, des voyageurs, des dates et des informations d’arrivée/retour ;
+- programme quotidien extensible avec lieu, titre, description et détails pratiques ;
+- génération d’un visuel IA pour chaque étape via Gemini ;
+- aperçu brochure avec en-tête Ramco et message d’accueil ;
+- export PDF A4 depuis le navigateur ;
+- outils WebMCP pour mettre à jour rapidement le dossier de voyage.
+
+## Développement local
+
+Prérequis : Node.js `>=22.13.0`.
+
+```sh
+pnpm install
+pnpm dev
+```
+
+Pour générer un build de production :
+
+```sh
+pnpm build
+```
+
+## Configuration Gemini
+
+Le endpoint `app/api/generate-image/route.ts` lit la variable d’environnement `GEMINI_API_KEY`. Configure cette variable comme secret dans l’environnement de déploiement ; ne l’ajoute jamais au dépôt GitHub ni à un fichier `.env` commité.
+
+## Déploiement Sites
+
+Le projet utilise le runtime Cloudflare/Vinext et le fichier `.openai/hosting.json` pour sa configuration Sites. Les commandes et scripts de publication fournis par l’environnement Sites restent disponibles.
 
 ## Prerequisites
 
