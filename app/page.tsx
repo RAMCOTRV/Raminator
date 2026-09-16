@@ -90,6 +90,11 @@ const githubErrorMessages: Record<string, string> = {
   github_unavailable: "GitHub n’a pas pu confirmer ce compte. Réessaie dans un instant.",
 };
 
+const hotelExteriorFallback =
+  "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80";
+
+const hotelKeywords = /(hotel|hôtel|riad|resort|residence|suite|hostel|villa|auberge|palace|boutique hotel|luxury hotel)/i;
+
 const demoImages = [
   "https://images.unsplash.com/photo-1539020140153-e8c6a5d9a2d5?auto=format&fit=crop&w=1200&q=85",
   "https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=1200&q=85",
@@ -97,6 +102,14 @@ const demoImages = [
   "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1200&q=85",
   "https://images.unsplash.com/photo-1539650116574-75c0c6d73f6e?auto=format&fit=crop&w=1200&q=85",
 ];
+
+function resolveDayImage(location: string, title: string, fallbackIndex = 0) {
+  const combined = `${location} ${title}`.toLowerCase();
+  if (hotelKeywords.test(combined)) {
+    return hotelExteriorFallback;
+  }
+  return demoImages[fallbackIndex % demoImages.length];
+}
 
 const seedDays: TripDay[] = [
   {
@@ -107,7 +120,7 @@ const seedDays: TripDay[] = [
     description:
       "Accueil à l’aéroport puis installation dans un riad au cœur de la médina. Une première promenade douce pour apprivoiser les couleurs, les odeurs et le joyeux ballet des ruelles.",
     details: "Transfert privé · Riad avec petit-déjeuner · Promenade d’orientation",
-    imageUrl: demoImages[0],
+    imageUrl: resolveDayImage("Marrakech", "Premiers pas dans la Ville Rouge", 0),
   },
   {
     id: 2,
@@ -117,7 +130,7 @@ const seedDays: TripDay[] = [
     description:
       "Le matin, les jardins Majorelle et le musée Yves Saint Laurent. L’après-midi, les palais Bahia et El Badi, avant une adresse choisie pour un dîner marocain plein de parfums.",
     details: "Guide francophone · Entrées incluses · Dîner traditionnel",
-    imageUrl: demoImages[1],
+    imageUrl: resolveDayImage("Marrakech", "Jardins, palais et thé à la menthe", 1),
   },
   {
     id: 3,
@@ -127,7 +140,7 @@ const seedDays: TripDay[] = [
     description:
       "Cap au sud, vers les villages berbères et les terrasses de l’Ourika. Une journée de paysages ouverts, de cuisine familiale et de petites pauses où personne ne regarde sa montre.",
     details: "Excursion privée · Déjeuner chez l’habitant · Retour en fin de journée",
-    imageUrl: demoImages[2],
+    imageUrl: resolveDayImage("Vallée de l’Ourika", "Une échappée fraîche dans l’Atlas", 2),
   },
   {
     id: 4,
@@ -137,7 +150,7 @@ const seedDays: TripDay[] = [
     description:
       "Départ pour les paysages lunaires du désert d’Agafay. Balade au coucher du soleil, dîner sous tente et ciel étoilé : la grande aventure, avec un lit confortable à portée de main.",
     details: "Transfert · Balade à dos de dromadaire · Dîner sous les étoiles",
-    imageUrl: demoImages[3],
+    imageUrl: resolveDayImage("Agafay", "Le désert sans attendre le désert", 3),
   },
   {
     id: 5,
@@ -147,7 +160,7 @@ const seedDays: TripDay[] = [
     description:
       "Route vers Essaouira, ses remparts, ses ateliers de bois de thuya et ses terrasses face à l’océan. Le programme officiel : flâner avec beaucoup de sérieux.",
     details: "Transfert privé · Visite de la médina · Temps libre au port",
-    imageUrl: demoImages[4],
+    imageUrl: resolveDayImage("Essaouira", "Vent d’Atlantique et médina blanche", 4),
   },
   {
     id: 6,
@@ -155,9 +168,9 @@ const seedDays: TripDay[] = [
     location: "Marrakech",
     title: "Derniers souvenirs, retour vers Tunis",
     description:
-      "Un dernier café sur la place Jemaa el-Fna, quelques achats choisis avec discernement, puis transfert vers l’aéroport. On repart avec des images plein la tête et, probablement, un peu trop de pâtisseries.",
+      "Un dernier café sur la place Jemaa el-Fna, quelques achats choisis avec discernement, puis transfert vers l’aéroport. On repart avec des images plein la tête et, probablement, un peu plus de patience pour la prochaine escapade.",
     details: "Temps libre · Transfert aéroport · Assistance Ramco",
-    imageUrl: demoImages[0],
+    imageUrl: resolveDayImage("Marrakech", "Derniers souvenirs, retour vers Tunis", 0),
   },
 ];
 
@@ -206,7 +219,7 @@ function newDay(id: number, startDate: string): TripDay {
     title: "Une nouvelle journée à imaginer",
     description: "Ajoute ici le rythme, les découvertes et les petites attentions qui rendront cette étape unique.",
     details: "À préciser · À préciser · À préciser",
-    imageUrl: demoImages[(id - 1) % demoImages.length],
+    imageUrl: resolveDayImage("Nouvelle étape", "Une nouvelle journée à imaginer", id),
   };
 }
 
@@ -465,6 +478,9 @@ export default function Home() {
                 changed.push(key);
               }
             }
+            if (data.location !== undefined || data.title !== undefined) {
+              next.imageUrl = resolveDayImage(next.location, next.title, day);
+            }
             return next;
           });
           return { ...current, days: nextDays };
@@ -607,7 +623,7 @@ export default function Home() {
                 return (
                   <div key={day.id} className={cn("day-editor rounded-2xl border", isOpen ? "border-[#c8dcd8] bg-[#f8fbfa]" : "border-transparent bg-[#f6f8f7]")}>
                     <button type="button" onClick={() => setOpenDay(isOpen ? null : day.id)} className="flex w-full items-center gap-3 px-3 py-3 text-left">
-                      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-xl text-xs font-bold", isOpen ? "bg-[#e36e5a] text-white" : "bg-[#dce8e5] text-[#3d7772]")}>{String(index + 1).padStart(2, "0")}</span>
+                      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-xl text-xs font-bold", isOpen ? "bg-[#e36e5a] text-white" : "bg-[#dce8e5] text-[#3d7772]")}>{index + 1}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-[#183b4a]">{day.location}</span>
                         <span className="mt-0.5 block truncate text-xs text-[#80959a]">{shortDate(day.date)} · {day.title}</span>
@@ -640,7 +656,9 @@ export default function Home() {
                               {isGenerating ? "Création…" : day.aiImage ? "Visuel prêt" : "Générer le visuel IA"}
                             </Button>
                           )}
-                          {day.aiImage && <Button type="button" onClick={() => resetImage(day)} aria-label="Réinitialiser le visuel" variant="outline" size="icon-sm" className="rounded-xl border-[#d9e5e2] text-[#68818a]"><Trash2 className="size-4" /></Button>}
+                          {day.aiImage && <Button type="button" onClick={() => resetImage(day)} aria-label="Réinitialiser le visuel" variant="outline" size="icon-sm" className="rounded-xl border border-[#d9e3e1] bg-white text-[#173c4b] hover:bg-[#f5faf8]">
+                            <Trash2 className="size-4" />
+                          </Button>}
                         </div>
                       </div>
                     )}
@@ -648,7 +666,7 @@ export default function Home() {
                 );
               })}
             </div>
-            <button type="button" onClick={addDay} className="flex w-full items-center justify-center gap-2 border-t border-[#e4ecea] px-5 py-3.5 text-sm font-semibold text-[#3d7772] transition hover:bg-[#f3f9f7]">
+            <button type="button" onClick={addDay} className="flex w-full items-center justify-center gap-2 border-t border-[#e4ecea] px-5 py-3.5 text-sm font-semibold text-[#3d7772] transition hover:bg-[#f4faf8]">
               <Plus className="size-4" /> Ajouter une étape
             </button>
           </section>
@@ -681,29 +699,29 @@ export default function Home() {
                   <p className="mt-7 max-w-[450px] text-base leading-7 text-[#d3e1e2] sm:text-lg">{trip.welcome}</p>
                 </div>
                 <div className="relative z-10 mt-12 flex flex-wrap items-end justify-between gap-5 border-t border-white/20 pt-5 sm:mt-16">
-                  <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9fbcc3]">Dates proposées</p><p className="mt-1 text-lg font-semibold text-white">{formatDate(trip.startDate)} — {formatDate(trip.endDate, true)}</p></div>
-                  <div className="text-right"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9fbcc3]">Une création</p><p className="mt-1 font-serif text-lg text-[#f6bb65]">Ramco, Tunis</p></div>
+                  <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9fbcc3]">Dates proposées</p><p className="mt-1 text-lg font-semibold text-white">{formatDate(trip.startDate)} au {formatDate(trip.endDate)}</p></div>
+                  <div className="text-right"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9fbcc3]">Une création</p><p className="mt-1 font-serif text-lg text-[#f6bb65]">Ramco</p></div>
                 </div>
               </div>
 
               <div className="px-5 py-7 sm:px-12 sm:py-12">
                 <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-[#d7d6cf] pb-5">
-                  <div><p className="eyebrow text-[#df715d]"><Sparkles className="size-3.5" /> Le fil du voyage</p><h3 className="mt-2 font-serif text-[32px] leading-none tracking-tight text-[#123446]">Jour après jour</h3></div>
+                  <div><p className="eyebrow text-[#df715d]"><Sparkles className="size-3.5" /> Le fil du voyage</p><h3 className="mt-2 font-serif text-[32px] leading-none tracking-tight text-[#123446]">Programme détaillé</h3></div>
                   <p className="max-w-[230px] text-right text-xs leading-5 text-[#73888d]">Un itinéraire souple, précis et suffisamment vivant pour laisser une place aux surprises.</p>
                 </div>
 
                 <div className="space-y-7">
                   {trip.days.map((day, index) => {
-                    const image = day.aiImage || day.imageUrl;
+                    const image = day.aiImage || day.imageUrl || resolveDayImage(day.location, day.title, index);
                     return (
                       <article key={day.id} className="break-inside-avoid grid gap-5 border-b border-[#ddd9d1] pb-7 last:border-0 sm:grid-cols-[146px_minmax(0,1fr)] sm:gap-7">
                         <div className="relative">
                           <img src={image} alt={`${day.location} — ${day.title}`} crossOrigin="anonymous" className="h-[118px] w-full rounded-[14px] object-cover sm:h-[146px]" />
-                          <span className="absolute -left-2 -top-2 flex size-8 items-center justify-center rounded-full bg-[#e36e5a] text-xs font-bold text-white shadow-[0_4px_10px_rgba(227,110,90,0.3)]">{String(index + 1).padStart(2, "0")}</span>
+                          <span className="absolute -left-2 -top-2 flex size-8 items-center justify-center rounded-full bg-[#e36e5a] text-xs font-bold text-white shadow-[0_4px_10px_rgba(227,110,90,0.28)]">{index + 1}</span>
                           {day.aiImage && <span className="absolute bottom-2 left-2 rounded-full bg-[#123446]/90 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-[#f6bb65]">Visuel IA</span>}
                         </div>
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#d6705e]"><span>{shortDate(day.date)}</span><span className="size-1 rounded-full bg-[#b9c1bb]" /><span className="text-[#789095]">{day.location}</span></div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#d6705e]"><span>{shortDate(day.date)}</span><span className="text-[#a6b8bb]">•</span><span>{day.location}</span></div>
                           <h4 className="mt-2 font-serif text-[25px] leading-[1.02] tracking-tight text-[#123446]">{day.title}</h4>
                           <p className="mt-2.5 text-[14px] leading-6 text-[#5d747a]">{day.description}</p>
                           <p className="mt-3 flex items-start gap-2 text-[11px] font-semibold leading-5 text-[#34716c]"><span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#34716c]" />{day.details}</p>
@@ -715,10 +733,10 @@ export default function Home() {
               </div>
 
               <div className="grid gap-6 bg-[#dfeae5] px-5 py-7 sm:grid-cols-[1.2fr_0.8fr] sm:px-12 sm:py-10">
-                <div><p className="eyebrow text-[#34716c]"><ArrowUpRight className="size-3.5" /> Points de départ</p><p className="mt-3 text-sm leading-6 text-[#34565f]"><strong className="font-semibold text-[#123446]">{trip.arrival}</strong><br />{trip.returnDetails}</p></div>
-                <div className="rounded-[14px] bg-[#123446] p-4 text-[#f6f0e8]"><p className="font-serif text-xl leading-tight">{toneMessages[trip.tone]}</p><p className="mt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#f6bb65]">Ramco · Tunis</p></div>
+                <div><p className="eyebrow text-[#34716c]"><ArrowUpRight className="size-3.5" /> Points de départ</p><p className="mt-3 text-sm leading-6 text-[#34565f]"><strong className="font-semibold text-[#123446]">Ramco</strong> insiste sur les points de contact, les petits détails qui calment les voyageurs et les horaires qui laissent de la place au plaisir.</p></div>
+                <div className="rounded-[14px] bg-[#123446] p-4 text-[#f6f0e8]"><p className="font-serif text-xl leading-tight">{toneMessages[trip.tone]}</p><p className="mt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#f6bb65]">Ambiance</p></div>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-[#f6f0e8] px-5 py-5 text-[10px] font-bold uppercase tracking-[0.17em] text-[#8a9b9d] sm:px-12"><span>ramco voyages</span><span>Votre voyage commence ici</span></div>
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-[#f6f0e8] px-5 py-5 text-[10px] font-bold uppercase tracking-[0.17em] text-[#8a9b9d] sm:px-12"><span>ramco voyage studio</span><span>{trip.destination}</span><span>{trip.days.length} étapes</span></div>
             </div>
           </div>
 
@@ -747,7 +765,7 @@ function GitHubGate({ status, message }: { status: "loading" | "unauthenticated"
         ) : (
           <div className="mt-8">
             {message && <p className="mb-4 rounded-2xl border border-[#f6bb65]/30 bg-[#f6bb65]/10 px-4 py-3 text-sm leading-6 text-[#ffe4ad]">{message}</p>}
-            <a href="/api/auth/github/start" className="flex h-12 items-center justify-center gap-3 rounded-xl bg-[#f6bb65] px-5 text-sm font-bold text-[#123446] transition hover:bg-[#ffd184]"><GitBranch className="size-5" /> Se connecter avec GitHub</a>
+            <a href="/api/auth/github/start" className="flex h-12 items-center justify-center gap-3 rounded-xl bg-[#f6bb65] px-5 text-sm font-bold text-[#123446] transition hover:bg-[#ffd184]"><GitBranch className="size-4" /> Se connecter avec GitHub</a>
             <p className="mt-4 text-center text-xs leading-5 text-[#a9c6d0]">L’accès est réservé au compte GitHub configuré pour Ramco.</p>
           </div>
         )}
