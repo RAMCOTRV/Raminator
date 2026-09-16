@@ -4,6 +4,7 @@ import {
   createSession,
   getGitHubConfig,
   readOAuthState,
+  redirectResponse,
   redirectWithError,
   sessionCookie,
 } from "@/app/lib/github-auth";
@@ -34,16 +35,15 @@ export async function GET(request: Request) {
   const providerError = url.searchParams.get("error");
 
   if (providerError || !code || !state) {
-    const response = Response.redirect(redirectWithError(config, providerError === "access_denied" ? "cancelled" : "invalid_callback"), 302);
-    for (const cookie of clearAuthCookies(request)) response.headers.append("Set-Cookie", cookie);
-    return response;
+    return redirectResponse(
+      redirectWithError(config, providerError === "access_denied" ? "cancelled" : "invalid_callback"),
+      clearAuthCookies(request),
+    );
   }
 
   const verifier = await readOAuthState(request, config, state);
   if (!verifier) {
-    const response = Response.redirect(redirectWithError(config, "invalid_state"), 302);
-    for (const cookie of clearAuthCookies(request)) response.headers.append("Set-Cookie", cookie);
-    return response;
+    return redirectResponse(redirectWithError(config, "invalid_state"), clearAuthCookies(request));
   }
 
   try {
@@ -75,9 +75,7 @@ export async function GET(request: Request) {
     if (!userResponse.ok || !githubUser.id || !githubUser.login) throw new Error("identity_lookup_failed");
 
     if (githubUser.login.toLowerCase() !== config.allowedLogin) {
-      const response = Response.redirect(redirectWithError(config, "not_allowed"), 302);
-      for (const cookie of clearAuthCookies(request)) response.headers.append("Set-Cookie", cookie);
-      return response;
+      return redirectResponse(redirectWithError(config, "not_allowed"), clearAuthCookies(request));
     }
 
     const user = {
@@ -87,13 +85,11 @@ export async function GET(request: Request) {
       avatarUrl: githubUser.avatar_url || null,
     };
     const signedSession = await createSession(config, user);
-    const response = Response.redirect(appRoot(config), 302);
-    for (const cookie of clearAuthCookies(request)) response.headers.append("Set-Cookie", cookie);
-    response.headers.append("Set-Cookie", sessionCookie(request, signedSession));
-    return response;
+    return redirectResponse(appRoot(config), [
+      ...clearAuthCookies(request),
+      sessionCookie(request, signedSession),
+    ]);
   } catch {
-    const response = Response.redirect(redirectWithError(config, "github_unavailable"), 302);
-    for (const cookie of clearAuthCookies(request)) response.headers.append("Set-Cookie", cookie);
-    return response;
+    return redirectResponse(redirectWithError(config, "github_unavailable"), clearAuthCookies(request));
   }
 }
