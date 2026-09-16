@@ -8,8 +8,10 @@ import {
   Check,
   Compass,
   Copy,
+  GitBranch,
   ImagePlus,
   LoaderCircle,
+  LogOut,
   MapPin,
   MessageCircleHeart,
   Minus,
@@ -65,6 +67,27 @@ type PageToolContext = {
     },
     options?: { signal?: AbortSignal },
   ) => void | Promise<void>;
+};
+
+type GitHubUser = {
+  id: number;
+  login: string;
+  name: string | null;
+  avatarUrl: string | null;
+};
+
+type GitHubAuthResponse = {
+  authenticated?: boolean;
+  configured?: boolean;
+  user?: GitHubUser;
+};
+
+const githubErrorMessages: Record<string, string> = {
+  cancelled: "La connexion GitHub a été annulée.",
+  invalid_callback: "La réponse de GitHub est incomplète. Réessaie.",
+  invalid_state: "La session de connexion a expiré. Réessaie.",
+  not_allowed: "Ce compte GitHub n’est pas autorisé pour l’atelier Ramco.",
+  github_unavailable: "GitHub n’a pas pu confirmer ce compte. Réessaie dans un instant.",
 };
 
 const demoImages = [
@@ -193,6 +216,45 @@ export default function Home() {
   const [generating, setGenerating] = useState<number[]>([]);
   const [notice, setNotice] = useState("");
   const [isExporting, setIsExporting] = useState(false);
+  const [authState, setAuthState] = useState<"loading" | "authenticated" | "unauthenticated" | "error">("loading");
+  const [githubUser, setGithubUser] = useState<GitHubUser | null>(null);
+  const [authMessage, setAuthMessage] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const githubError = params.get("github_error");
+    if (githubError) {
+      setAuthMessage(githubErrorMessages[githubError] || "La connexion GitHub n’a pas abouti.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
+    let active = true;
+    void fetch("/api/auth/github/me", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json() as GitHubAuthResponse;
+        if (!active) return;
+        if (!response.ok && result.configured === false) {
+          setAuthState("error");
+          setAuthMessage("L’authentification GitHub doit encore être configurée.");
+          return;
+        }
+        if (result.authenticated && result.user) {
+          setGithubUser(result.user);
+          setAuthState("authenticated");
+        } else {
+          setAuthState("unauthenticated");
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setAuthState("error");
+        setAuthMessage("Impossible de vérifier la connexion GitHub pour le moment.");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const tripDuration = useMemo(() => {
     const start = new Date(`${trip.startDate}T12:00:00`).getTime();
@@ -414,6 +476,10 @@ export default function Home() {
     return () => lifecycle.abort();
   }, []);
 
+  if (authState !== "authenticated") {
+    return <GitHubGate status={authState} message={authMessage} />;
+  }
+
   return (
     <main className="min-h-screen bg-[#eef1f3] text-[#132b3c]">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#102c3d] text-white shadow-[0_12px_30px_rgba(16,44,61,0.16)]">
@@ -434,6 +500,13 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2">
+            {githubUser && (
+              <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-xs text-[#d8e5e6] sm:flex">
+                {githubUser.avatarUrl ? <img src={githubUser.avatarUrl} alt="" className="size-5 rounded-full" /> : <GitBranch className="size-4" />}
+                <span>{githubUser.login}</span>
+                <a href="/api/auth/github/logout" aria-label="Se déconnecter de GitHub" className="ml-1 text-[#a9c6d0] transition hover:text-white"><LogOut className="size-4" /></a>
+              </div>
+            )}
             <Button
               onClick={downloadPdf}
               disabled={isExporting}
@@ -655,6 +728,30 @@ export default function Home() {
           </div>
         </section>
       </div>
+    </main>
+  );
+}
+
+function GitHubGate({ status, message }: { status: "loading" | "unauthenticated" | "error"; message: string }) {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#eef1f3] px-5 py-10 text-[#132b3c]">
+      <section className="w-full max-w-[520px] rounded-[28px] bg-[#123446] p-8 text-white shadow-[0_28px_80px_rgba(16,44,61,0.22)] sm:p-12">
+        <div className="flex size-14 items-center justify-center rounded-[18px] bg-[#f6bb65] text-[#123446]"><GitBranch className="size-7" /></div>
+        <p className="mt-8 text-[11px] font-bold uppercase tracking-[0.25em] text-[#f6bb65]">Ramco · Tunis</p>
+        <h1 className="mt-3 font-serif text-[42px] leading-[0.95] tracking-[-0.04em]">Votre atelier de brochures</h1>
+        <p className="mt-5 text-base leading-7 text-[#d3e1e2]">Connectez-vous avec le compte GitHub autorisé pour préparer les propositions de voyage Ramco.</p>
+        {status === "loading" ? (
+          <div className="mt-8 flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-4 text-sm text-[#d3e1e2]"><LoaderCircle className="size-4 animate-spin" /> Vérification de la connexion…</div>
+        ) : status === "error" ? (
+          <div className="mt-8 rounded-2xl border border-[#f6bb65]/30 bg-[#f6bb65]/10 px-4 py-4 text-sm leading-6 text-[#ffe4ad]">{message}</div>
+        ) : (
+          <div className="mt-8">
+            {message && <p className="mb-4 rounded-2xl border border-[#f6bb65]/30 bg-[#f6bb65]/10 px-4 py-3 text-sm leading-6 text-[#ffe4ad]">{message}</p>}
+            <a href="/api/auth/github/start" className="flex h-12 items-center justify-center gap-3 rounded-xl bg-[#f6bb65] px-5 text-sm font-bold text-[#123446] transition hover:bg-[#ffd184]"><GitBranch className="size-5" /> Se connecter avec GitHub</a>
+            <p className="mt-4 text-center text-xs leading-5 text-[#a9c6d0]">L’accès est réservé au compte GitHub configuré pour Ramco.</p>
+          </div>
+        )}
+      </section>
     </main>
   );
 }

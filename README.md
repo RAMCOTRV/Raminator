@@ -30,6 +30,18 @@ pnpm build
 
 Le endpoint `app/api/generate-image/route.ts` lit la variable d’environnement `GEMINI_API_KEY`. Configure cette variable comme secret dans l’environnement de déploiement ; ne l’ajoute jamais au dépôt GitHub ni à un fichier `.env` commité.
 
+## Connexion GitHub
+
+Le site utilise le flux OAuth web de GitHub et n’expose jamais le secret OAuth au navigateur. Configure les variables suivantes dans l’environnement de déploiement :
+
+- `GITHUB_CLIENT_ID` : identifiant public de l’application OAuth ;
+- `GITHUB_CLIENT_SECRET` : secret de l’application OAuth ;
+- `GITHUB_OAUTH_REDIRECT_URI` : `https://ramco-brochure-studio.fairpeace.chatgpt.site/api/auth/github/callback` ;
+- `GITHUB_SESSION_SECRET` : secret aléatoire utilisé pour signer les sessions ;
+- `GITHUB_ALLOWED_LOGIN` : compte autorisé, par exemple `RAMCOTRV`.
+
+L’accès du Site doit être public au niveau de l’hébergement pour permettre au callback GitHub d’atteindre l’application ; l’atelier lui-même reste protégé par la session GitHub et l’allowlist du compte autorisé.
+
 ## Déploiement Sites
 
 Le projet utilise le runtime Cloudflare/Vinext et le fichier `.openai/hosting.json` pour sa configuration Sites. Les commandes et scripts de publication fournis par l’environnement Sites restent disponibles.

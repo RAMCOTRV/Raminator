@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { getGitHubConfig, readSession } from "@/app/lib/github-auth";
 
 type GeminiImageBlock = {
   type?: string;
@@ -17,6 +18,11 @@ function messageFromError(error: unknown) {
 }
 
 export async function POST(request: Request) {
+  const configured = getGitHubConfig();
+  if (!configured.ok || !(await readSession(request, configured.config))) {
+    return Response.json({ error: "Connectez-vous avec GitHub pour générer un visuel." }, { status: 401 });
+  }
+
   const apiKey = env.GEMINI_API_KEY;
   if (!apiKey) {
     return Response.json({ error: "La clé Gemini n’est pas encore configurée pour ce site." }, { status: 503 });
