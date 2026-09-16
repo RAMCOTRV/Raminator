@@ -188,6 +188,12 @@ export function clearAuthCookies(request: Request) {
   ];
 }
 
+export function redirectResponse(location: string, cookies: string[] = []) {
+  const headers = new Headers({ Location: location });
+  for (const cookie of cookies) headers.append("Set-Cookie", cookie);
+  return new Response(null, { status: 302, headers });
+}
+
 export function appRoot(config: GitHubConfig) {
   const url = new URL(config.redirectUri);
   url.pathname = "/";
