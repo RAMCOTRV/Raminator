@@ -23,6 +23,17 @@ export async function POST(request: Request) {
     return Response.json({ error: "Connectez-vous avec GitHub pour générer un visuel." }, { status: 401 });
   }
 
+  if (env.MOCK_GEMINI === "true") {
+    // Mode test temporaire : évite d'appeler Gemini (utile pendant un quota bloqué)
+    // pour valider tout le flux — bouton, badge "Visuel IA", export PDF.
+    // Retirer ce bloc (et la variable d'environnement MOCK_GEMINI) une fois le test terminé.
+    const placeholder = await fetch("https://picsum.photos/900/600");
+    const bytes = new Uint8Array(await placeholder.arrayBuffer());
+    let binary = "";
+    bytes.forEach((byte) => (binary += String.fromCharCode(byte)));
+    return Response.json({ imageData: btoa(binary), mimeType: "image/jpeg" });
+  }
+
   const apiKey = env.GEMINI_API_KEY;
   if (!apiKey) {
     return Response.json({ error: "La clé Gemini n’est pas encore configurée pour ce site." }, { status: 503 });
