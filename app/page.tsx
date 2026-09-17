@@ -362,7 +362,7 @@ export default function Home() {
     void fetch("/api/place-photo", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, country: day.location }),
+      body: JSON.stringify({ query }),
     })
       .then(async (response) => {
         const result = await response.json() as { imageUrl?: string; placeName?: string; error?: string };
@@ -705,8 +705,8 @@ export default function Home() {
                             <Trash2 className="size-4" />
                           </Button>}
                         </div>
-                        <Field label="Nom exact de l’hôtel ou de l’excursion">
-                          <Input value={day.placeQuery || ""} onChange={(event) => updateDay(day.id, "placeQuery", event.target.value)} placeholder="ex. Riad Kheirredine, Marrakech" className="editor-input" />
+                        <Field label="Nom (Wikipédia) ou lien direct de la photo">
+                          <Input value={day.placeQuery || ""} onChange={(event) => updateDay(day.id, "placeQuery", event.target.value)} placeholder="ex. Jardin Majorelle — ou un lien (site de l’hôtel, Booking...)" className="editor-input" />
                         </Field>
                         <div className="flex items-center gap-2">
                           <Button type="button" onClick={() => searchPlacePhoto(day)} disabled={isSearchingPlace || Boolean(day.placePhoto)} size="sm" variant="outline" className="h-9 flex-1 rounded-xl border-[#3d7772] text-[#3d7772] hover:bg-[#f4faf8]">
