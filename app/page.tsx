@@ -93,6 +93,9 @@ const githubErrorMessages: Record<string, string> = {
 const hotelExteriorFallback =
   "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80";
 
+const placeFallbackImage =
+  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80";
+
 const hotelKeywords = /(hotel|hôtel|riad|resort|residence|suite|hostel|villa|auberge|palace|boutique hotel|luxury hotel)/i;
 
 const demoImages = [
@@ -343,6 +346,57 @@ export default function Home() {
       ...current,
       days: current.days.map((item) => (item.id === day.id ? { ...item, aiImage: undefined } : item)),
     }));
+  };
+
+  const fetchPlacePhoto = async (day: TripDay) => {
+    const query = day.location.trim();
+    const country = trip.destination || "Maroc";
+
+    try {
+      const response = await fetch("/api/place-photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, country }),
+      });
+
+      const result = await response.json() as {
+        imageUrl?: string;
+        placeName?: string;
+        error?: string;
+      };
+
+      if (!response.ok || !result.imageUrl) {
+        setTrip((current) => ({
+          ...current,
+          days: current.days.map((item) =>
+            item.id === day.id ? { ...item, imageUrl: placeFallbackImage } : item,
+          ),
+        }));
+
+        setNotice(
+          result.error ||
+            "Aucune photo Google Places disponible pour ce lieu. Vérifiez le nom exact ou ajoutez la ville/pays.",
+        );
+        return;
+      }
+
+      setTrip((current) => ({
+        ...current,
+        days: current.days.map((item) =>
+          item.id === day.id ? { ...item, imageUrl: result.imageUrl! } : item,
+        ),
+      }));
+
+      setNotice(`Photo trouvée pour ${result.placeName || day.location}.`);
+    } catch {
+      setTrip((current) => ({
+        ...current,
+        days: current.days.map((item) =>
+          item.id === day.id ? { ...item, imageUrl: placeFallbackImage } : item,
+        ),
+      }));
+      setNotice("Aucune photo disponible pour ce lieu. Image de secours affichée.");
+    }
   };
 
   const downloadPdf = async () => {
@@ -656,7 +710,11 @@ export default function Home() {
                               {isGenerating ? "Création…" : day.aiImage ? "Visuel prêt" : "Générer le visuel IA"}
                             </Button>
                           )}
-                          {day.aiImage && <Button type="button" onClick={() => resetImage(day)} aria-label="Réinitialiser le visuel" variant="outline" size="icon-sm" className="rounded-xl border border-[#d9e3e1] bg-white text-[#173c4b] hover:bg-[#f5faf8]">
+                          <Button type="button" onClick={() => fetchPlacePhoto(day)} variant="outline" size="sm" className="h-9 rounded-xl border-[#dce7e5] text-[#173c4b]">
+                            <MapPin className="size-4" />
+                            Photo lieu
+                          </Button>
+                          {day.aiImage && <Button type="button" onClick={() => resetImage(day)} aria-label="Réinitialiser le visuel" variant="outline" size="icon-sm" className="rounded-xl border-[#dce7e5] text-[#173c4b]">
                             <Trash2 className="size-4" />
                           </Button>}
                         </div>
@@ -666,7 +724,7 @@ export default function Home() {
                 );
               })}
             </div>
-            <button type="button" onClick={addDay} className="flex w-full items-center justify-center gap-2 border-t border-[#e4ecea] px-5 py-3.5 text-sm font-semibold text-[#3d7772] transition hover:bg-[#f4faf8]">
+            <button type="button" onClick={addDay} className="flex w-full items-center justify-center gap-2 border-t border-[#e4ecea] px-5 py-3.5 text-sm font-semibold text-[#3d7772] transition hover:bg-[#f3f7f6]">
               <Plus className="size-4" /> Ajouter une étape
             </button>
           </section>
@@ -678,7 +736,7 @@ export default function Home() {
               <p className="eyebrow text-[#769096]"><Palette className="size-3.5" /> Aperçu de la brochure</p>
               <p className="mt-1 text-sm text-[#6f878e]">Chaque modification s’affiche instantanément dans le document.</p>
             </div>
-            {notice && <div role="status" className="flex items-center gap-2 rounded-full border border-[#c7ddd8] bg-white px-3.5 py-2 text-sm font-semibold text-[#34716c] shadow-sm"><Check className="size-4" /> {notice}</div>}
+            {notice && <div role="status" className="flex items-center gap-2 rounded-full border border-[#c7ddd8] bg-white px-3.5 py-2 text-sm font-semibold text-[#34716c] shadow-sm"><Check className="size-4" />{notice}</div>}
           </div>
 
           <div className="preview-stage rounded-[28px] p-3 sm:p-5 xl:p-8">
@@ -699,14 +757,14 @@ export default function Home() {
                   <p className="mt-7 max-w-[450px] text-base leading-7 text-[#d3e1e2] sm:text-lg">{trip.welcome}</p>
                 </div>
                 <div className="relative z-10 mt-12 flex flex-wrap items-end justify-between gap-5 border-t border-white/20 pt-5 sm:mt-16">
-                  <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9fbcc3]">Dates proposées</p><p className="mt-1 text-lg font-semibold text-white">{formatDate(trip.startDate)} au {formatDate(trip.endDate)}</p></div>
+                  <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9fbcc3]">Dates proposées</p><p className="mt-1 text-lg font-semibold text-white">{formatDate(trip.startDate)} · {formatDate(trip.endDate)}</p></div>
                   <div className="text-right"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9fbcc3]">Une création</p><p className="mt-1 font-serif text-lg text-[#f6bb65]">Ramco</p></div>
                 </div>
               </div>
 
               <div className="px-5 py-7 sm:px-12 sm:py-12">
                 <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-[#d7d6cf] pb-5">
-                  <div><p className="eyebrow text-[#df715d]"><Sparkles className="size-3.5" /> Le fil du voyage</p><h3 className="mt-2 font-serif text-[32px] leading-none tracking-tight text-[#123446]">Programme détaillé</h3></div>
+                  <div><p className="eyebrow text-[#df715d]"><Sparkles className="size-3.5" /> Le fil du voyage</p><h3 className="mt-2 font-serif text-[32px] leading-none tracking-tight text-[#123446]">{trip.destination}</h3></div>
                   <p className="max-w-[230px] text-right text-xs leading-5 text-[#73888d]">Un itinéraire souple, précis et suffisamment vivant pour laisser une place aux surprises.</p>
                 </div>
 
@@ -717,11 +775,11 @@ export default function Home() {
                       <article key={day.id} className="break-inside-avoid grid gap-5 border-b border-[#ddd9d1] pb-7 last:border-0 sm:grid-cols-[146px_minmax(0,1fr)] sm:gap-7">
                         <div className="relative">
                           <img src={image} alt={`${day.location} — ${day.title}`} crossOrigin="anonymous" className="h-[118px] w-full rounded-[14px] object-cover sm:h-[146px]" />
-                          <span className="absolute -left-2 -top-2 flex size-8 items-center justify-center rounded-full bg-[#e36e5a] text-xs font-bold text-white shadow-[0_4px_10px_rgba(227,110,90,0.28)]">{index + 1}</span>
+                          <span className="absolute -left-2 -top-2 flex size-8 items-center justify-center rounded-full bg-[#e36e5a] text-xs font-bold text-white shadow-[0_4px_10px_rgba(227,110,9,0.28)]">{day.id}</span>
                           {day.aiImage && <span className="absolute bottom-2 left-2 rounded-full bg-[#123446]/90 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-[#f6bb65]">Visuel IA</span>}
                         </div>
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#d6705e]"><span>{shortDate(day.date)}</span><span className="text-[#a6b8bb]">•</span><span>{day.location}</span></div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#d6705e]"><span>{shortDate(day.date)}</span><span className="text-[#7e8d92]">{day.location}</span></div>
                           <h4 className="mt-2 font-serif text-[25px] leading-[1.02] tracking-tight text-[#123446]">{day.title}</h4>
                           <p className="mt-2.5 text-[14px] leading-6 text-[#5d747a]">{day.description}</p>
                           <p className="mt-3 flex items-start gap-2 text-[11px] font-semibold leading-5 text-[#34716c]"><span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#34716c]" />{day.details}</p>
@@ -733,10 +791,10 @@ export default function Home() {
               </div>
 
               <div className="grid gap-6 bg-[#dfeae5] px-5 py-7 sm:grid-cols-[1.2fr_0.8fr] sm:px-12 sm:py-10">
-                <div><p className="eyebrow text-[#34716c]"><ArrowUpRight className="size-3.5" /> Points de départ</p><p className="mt-3 text-sm leading-6 text-[#34565f]"><strong className="font-semibold text-[#123446]">Ramco</strong> insiste sur les points de contact, les petits détails qui calment les voyageurs et les horaires qui laissent de la place au plaisir.</p></div>
-                <div className="rounded-[14px] bg-[#123446] p-4 text-[#f6f0e8]"><p className="font-serif text-xl leading-tight">{toneMessages[trip.tone]}</p><p className="mt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#f6bb65]">Ambiance</p></div>
+                <div><p className="eyebrow text-[#34716c]"><ArrowUpRight className="size-3.5" /> Points de départ</p><p className="mt-3 text-sm leading-6 text-[#34565f]"><strong className="font-semibold">{trip.arrival}</strong></p><p className="mt-3 text-sm leading-6 text-[#34565f]">{trip.returnDetails}</p></div>
+                <div className="rounded-[14px] bg-[#123446] p-4 text-[#f6f0e8]"><p className="font-serif text-xl leading-tight">{toneMessages[trip.tone]}</p><p className="mt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#c9d9d4]">Ramco · Tunis</p></div>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-[#f6f0e8] px-5 py-5 text-[10px] font-bold uppercase tracking-[0.17em] text-[#8a9b9d] sm:px-12"><span>ramco voyage studio</span><span>{trip.destination}</span><span>{trip.days.length} étapes</span></div>
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-[#f6f0e8] px-5 py-5 text-[10px] font-bold uppercase tracking-[0.17em] text-[#8a9b9d] sm:px-12"><span>ramco voyage atelier</span><span>{trip.days.length} journées</span></div>
             </div>
           </div>
 
