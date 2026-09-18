@@ -3,6 +3,7 @@ declare namespace Cloudflare {
     DB?: D1Database;
     BUCKET?: R2Bucket;
     GEMINI_API_KEY?: string;
+    OPENAI_API_KEY?: string;
     GITHUB_CLIENT_ID?: string;
     GITHUB_CLIENT_SECRET?: string;
     GITHUB_OAUTH_REDIRECT_URI?: string;
