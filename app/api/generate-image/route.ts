@@ -13,6 +13,11 @@ type GeminiResponse = {
   error?: { message?: string };
 };
 
+type OpenAIImageResponse = {
+  data?: Array<{ b64_json?: string }>;
+  error?: { message?: string };
+};
+
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
 
 function sleep(milliseconds: number) {
@@ -56,9 +61,7 @@ async function requestGemini(apiKey: string, prompt: string) {
       }),
     });
 
-    if (response.ok) {
-      return response;
-    }
+    if (response.ok) return response;
 
     if (!RETRYABLE_STATUS_CODES.has(response.status) || attempt === maxAttempts - 1) {
       return response;
@@ -70,8 +73,33 @@ async function requestGemini(apiKey: string, prompt: string) {
   throw new Error("Gemini est temporairement indisponible.");
 }
 
+async function requestOpenAI(apiKey: string, prompt: string) {
+  return fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-image-1",
+      prompt,
+      size: "1024x1024",
+      quality: "medium",
+      output_format: "jpeg",
+    }),
+  });
+}
+
 function messageFromError(error: unknown) {
   return error instanceof Error ? error.message : "Erreur inattendue.";
+}
+
+async function readJson<T>(response: Response): Promise<T> {
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return {} as T;
+  }
 }
 
 export async function POST(request: Request) {
@@ -80,9 +108,14 @@ export async function POST(request: Request) {
     return Response.json({ error: "Connectez-vous avec GitHub pour générer un visuel." }, { status: 401 });
   }
 
-  const apiKey = env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return Response.json({ error: "La clé Gemini n’est pas encore configurée pour ce site." }, { status: 503 });
+  const geminiApiKey = env.GEMINI_API_KEY;
+  const openaiApiKey = env.OPENAI_API_KEY;
+
+  if (!geminiApiKey && !openaiApiKey) {
+    return Response.json(
+      { error: "Configurez GEMINI_API_KEY ou OPENAI_API_KEY pour générer un visuel." },
+      { status: 503 },
+    );
   }
 
   try {
@@ -90,26 +123,50 @@ export async function POST(request: Request) {
     const prompt = typeof payload.prompt === "string" ? payload.prompt.trim().slice(0, 1800) : "";
     if (!prompt) return Response.json({ error: "Une description du visuel est requise." }, { status: 400 });
 
-    const response = await requestGemini(apiKey, prompt);
-    const result = await response.json() as GeminiResponse;
-    if (!response.ok) {
-      const errorMessage = result.error?.message || "Gemini est momentanément saturé. Réessayez dans quelques secondes.";
+    if (geminiApiKey) {
+      try {
+        const response = await requestGemini(geminiApiKey, prompt);
+        const result = await readJson<GeminiResponse>(response);
+
+        if (response.ok) {
+          const image = result.output_image || result.steps
+            ?.filter((step) => step.type === "model_output")
+            .flatMap((step) => step.content || [])
+            .find((block) => block.type === "image" && block.data);
+
+          if (image?.data) {
+            return Response.json({
+              imageData: image.data,
+              mimeType: image.mime_type || "image/jpeg",
+              provider: "gemini",
+            });
+          }
+        }
+      } catch {
+        // continue to backup provider below
+      }
+    }
+
+    if (openaiApiKey) {
+      const response = await requestOpenAI(openaiApiKey, prompt);
+      const result = await readJson<OpenAIImageResponse>(response);
+      const image = result.data?.[0]?.b64_json;
+
+      if (response.ok && image) {
+        return Response.json({ imageData: image, mimeType: "image/jpeg", provider: "openai" });
+      }
+
+      const openaiError = result.error?.message || `OpenAI a répondu avec le statut ${response.status}.`;
       return Response.json(
-        { error: errorMessage },
-        {
-          status: response.status === 429 || response.status === 503 ? 503 : 502,
-          headers: { "Retry-After": "10" },
-        },
+        { error: openaiError },
+        { status: 503, headers: { "Retry-After": "10" } },
       );
     }
 
-    const image = result.output_image || result.steps
-      ?.filter((step) => step.type === "model_output")
-      .flatMap((step) => step.content || [])
-      .find((block) => block.type === "image" && block.data);
-    if (!image?.data) return Response.json({ error: "Gemini a répondu sans image exploitable." }, { status: 502 });
-
-    return Response.json({ imageData: image.data, mimeType: image.mime_type || "image/jpeg" });
+    return Response.json(
+      { error: "Le service de génération d’image est temporairement indisponible." },
+      { status: 503, headers: { "Retry-After": "10" } },
+    );
   } catch (error) {
     return Response.json({ error: messageFromError(error) }, { status: 500 });
   }
