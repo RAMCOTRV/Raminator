@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowUpRight,
@@ -235,6 +235,7 @@ export default function Home() {
   const [authState, setAuthState] = useState<"loading" | "authenticated" | "unauthenticated" | "error">("loading");
   const [githubUser, setGithubUser] = useState<GitHubUser | null>(null);
   const [authMessage, setAuthMessage] = useState("");
+  const customPhotoInputRef = useRef<Record<number, HTMLInputElement | null>>({});
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -306,6 +307,25 @@ export default function Home() {
     setOpenDay(null);
   };
 
+  const handleCustomPhotoUpload = (event: React.ChangeEvent<HTMLInputElement>, day: TripDay) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : null;
+      if (!result) return;
+      setTrip((current) => ({
+        ...current,
+        days: current.days.map((item) => (item.id === day.id ? { ...item, imageUrl: result } : item)),
+      }));
+      setNotice(`Photo personnelle ajoutée pour ${day.title || day.location}.`);
+      window.setTimeout(() => setNotice(""), 3200);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
+  };
+
   const generateImage = (day: TripDay) => {
     if (generating.includes(day.id)) return;
     setGenerating((current) => [...current, day.id]);
@@ -344,7 +364,7 @@ export default function Home() {
   const resetImage = (day: TripDay) => {
     setTrip((current) => ({
       ...current,
-      days: current.days.map((item) => (item.id === day.id ? { ...item, aiImage: undefined } : item)),
+      days: current.days.map((item) => (item.id === day.id ? { ...item, aiImage: undefined, imageUrl: resolveDayImage(day.location, day.title, day.id) } : item)),
     }));
   };
 
@@ -703,7 +723,7 @@ export default function Home() {
                         <Field label="Détails inclus">
                           <Input value={day.details} onChange={(event) => updateDay(day.id, "details", event.target.value)} className="editor-input" />
                         </Field>
-                        <div className="flex items-center gap-2 pt-1">
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
                           {trip.includeAiImages && (
                             <Button type="button" onClick={() => generateImage(day)} disabled={isGenerating} size="sm" className="h-9 flex-1 rounded-xl bg-[#173c4b] text-white hover:bg-[#245365]">
                               {isGenerating ? <LoaderCircle className="size-4 animate-spin" /> : day.aiImage ? <Check className="size-4" /> : <ImagePlus className="size-4" />}
@@ -714,6 +734,19 @@ export default function Home() {
                             <MapPin className="size-4" />
                             Photo lieu
                           </Button>
+                          <label className="flex h-9 cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#dce7e5] bg-white px-3 text-sm font-medium text-[#173c4b] hover:bg-[#f4f8f8]">
+                            <input
+                              ref={(element) => {
+                                customPhotoInputRef.current[day.id] = element;
+                              }}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(event) => handleCustomPhotoUpload(event, day)}
+                            />
+                            <ImagePlus className="size-4" />
+                            Ajouter ma photo
+                          </label>
                           {day.aiImage && <Button type="button" onClick={() => resetImage(day)} aria-label="Réinitialiser le visuel" variant="outline" size="icon-sm" className="rounded-xl border-[#dce7e5] text-[#173c4b]">
                             <Trash2 className="size-4" />
                           </Button>}
