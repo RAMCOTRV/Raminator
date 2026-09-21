@@ -7,5 +7,8 @@ export async function POST(request: Request) {
   }
 
   void request;
-  return Response.json({ error: "La génération d’images est désactivée. Le programme est disponible sans photo." }, { status: 410 });
+  return Response.json(
+    { error: "La génération d’images est désactivée. Le programme est disponible sans photo." },
+    { status: 410 },
+  );
 }
