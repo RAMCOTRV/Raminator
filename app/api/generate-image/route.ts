@@ -1,15 +1,11 @@
-declare namespace Cloudflare {
-  interface Env {
-    DB?: D1Database;
-    BUCKET?: R2Bucket;
-    ANTHROPIC_API_KEY?: string;
-    OPENAI_API_KEY?: string;
-    GEMINI_API_KEY?: string;
-    CLOUDFLARE_ACCOUNT_ID?: string;
-    CLOUDFLARE_API_TOKEN?: string;
-    GITHUB_CLIENT_ID?: string;
-    GITHUB_CLIENT_SECRET?: string;
-    GITHUB_OAUTH_REDIRECT_URI?: string;
-    GITHUB_SESSION_SECRET?: string;
-    GITHUB_ALLOWED_LOGIN?: string;
+import { getGitHubConfig, readSession } from "@/app/lib/github-auth";
+
+export async function POST(request: Request) {
+  const configured = getGitHubConfig();
+  if (!configured.ok || !(await readSession(request, configured.config))) {
+    return Response.json({ error: "Connectez-vous avec GitHub." }, { status: 401 });
   }
+
+  void request;
+  return Response.json({ error: "La génération d’images est désactivée. Le programme est disponible sans photo." }, { status: 410 });
+}
