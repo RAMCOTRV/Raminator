@@ -123,7 +123,114 @@ export default function Home() {
 
   if (auth !== "authenticated") return <main className="flex min-h-screen items-center justify-center bg-[#eef1f3] p-5"><section className="w-full max-w-[520px] rounded-[28px] bg-[#123446] p-8 text-white"><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#f6bb65]">Ramco · Tunis</p><h1 className="mt-4 font-serif text-4xl">Votre programme de voyage</h1>{auth === "loading" ? <p className="mt-6">Vérification de la connexion…</p> : auth === "error" ? <p className="mt-6 text-[#ffe4ad]">L’authentification GitHub doit encore être configurée.</p> : <a href="/api/auth/github/start" className="mt-6 block rounded-xl bg-[#f6bb65] p-3 text-center font-bold text-[#123446]">Se connecter</a>}</section></main>;
 
-  return <main className="min-h-screen bg-[#eef1f3] text-[#132b3c]"><header className="sticky top-0 z-40 flex h-[72px] items-center justify-between bg-[#102c3d] px-5 text-white"><div><p className="font-serif text-[21px]">ramco</p><p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#a9c6d0]">Travel atelier · Tunis</p></div><div className="flex items-center gap-3">{user && <span className="hidden text-xs sm:inline">{user.login}</span>}<button onClick={downloadPdf} className="rounded-xl bg-[#f6bb65] px-4 py-2 text-sm font-bold text-[#102c3d]">Télécharger le PDF</button></div></header><div className="mx-auto grid max-w-[1500px] grid-cols-1 gap-5 p-4 lg:grid-cols-[420px_minmax(0,1fr)]"><aside className="rounded-[28px] bg-[#f8fafb] p-5 shadow-[0_10px_30px_rgba(18,52,70,0.08)]"><div className="mb-5 flex items-center justify-between"><h2 className="font-serif text-2xl">Votre itinéraire</h2><button onClick={addDay} className="rounded-xl bg-[#123446] px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white">+ Jour</button></div><div className="space-y-4"><Field label="Titre"><input value={trip.title} onChange={(event) => updateTrip("title", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field><Field label="Destination"><input value={trip.destination} onChange={(event) => updateTrip("destination", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field><div className="grid grid-cols-2 gap-3"><Field label="Départ"><input type="date" value={trip.startDate} onChange={(event) => updateTrip("startDate", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field><Field label="Retour"><input type="date" value={trip.endDate} onChange={(event) => updateTrip("endDate", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field></div><Field label="Voyageurs"><input value={trip.travellers} onChange={(event) => updateTrip("travellers", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field><Field label="Arrivée"><input value={trip.arrival} onChange={(event) => updateTrip("arrival", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field><Field label="Retour / détails"><input value={trip.returnDetails} onChange={(event) => updateTrip("returnDetails", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field><Field label="Message d’accueil"><textarea value={trip.welcome} onChange={(event) => updateTrip("welcome", event.target.value)} rows={3} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field><Field label="Ambiance"><select value={trip.tone} onChange={(event) => updateTrip("tone", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5"><option>{trip.tone}</option>{Object.keys(tones).filter((tone) => tone !== trip.tone).map((tone) => <option key={tone}>{tone}</option>)}</select></Field></div></aside><section className="space-y-5 rounded-[28px] bg-[#f8fafb] p-5 shadow-[0_10px_30px_rgba(18,52,70,0.08)]"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#7c9296]">Brochure</p><h2 className="font-serif text-3xl">{trip.title}</h2></div><span className="rounded-full bg-[#ebf5f0] px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-[#1e6e4e]">{duration} jours</span></div>{notice && <div className="rounded-xl border border-[#f6d0a3] bg-[#fff8ee] px-3 py-2 text-sm text-[#7d4a16]">{notice}</div>}<div className="rounded-[26px] bg-white p-5 shadow-[0_8px_24px_rgba(18,52,70,0.05)]"><div className="mb-5 border-b border-[#e4eaec] pb-4"><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#7c9296]">Ramco · Tunis</p><h3 className="mt-2 font-serif text-4xl">{trip.title}</h3><p className="mt-2 text-[#4b6875]">{trip.destination} · {duration} jours · {trip.travellers}</p></div><p className="mb-5 text-[15px] leading-7 text-[#294454]">{trip.welcome}</p><div className="grid grid-cols-2 gap-3 text-sm"><div className="rounded-2xl bg-[#eef6f8] p-3"><span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#7c9296]">Arrivée</span><span>{trip.arrival}</span></div><div className="rounded-2xl bg-[#eef6f8] p-3"><span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#7c9296]">Retour</span><span>{trip.returnDetails}</span></div></div></div>{trip.days.map((day) => (<div key={day.id} className={`overflow-hidden rounded-[24px] border ${openDay === day.id ? "border-[#d7e0e3] bg-white" : "border-transparent bg-[#edf2f3]"}`}><button onClick={() => setOpenDay(openDay === day.id ? 0 : day.id)} className="flex w-full items-center justify-between gap-4 p-4 text-left"><div className="flex items-center gap-4"><div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[18px] border border-[#d7e0e3] bg-[#edf2f3] text-center text-[11px] font-bold uppercase tracking-[0.18em] text-[#123446]"><span className="leading-[1.2]">Jour<br />{day.id}</span></div><div><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#7c9296]">Étape</p><h4 className="mt-1 font-serif text-2xl">{day.title}</h4></div></div><span className="text-xs font-bold uppercase tracking-[0.14em] text-[#7c9296]">{dateLabel(day.date)}</span></button>{openDay === day.id && <div className="border-t border-[#e4eaec] p-4 space-y-4"><Field label="Date"><input type="date" value={day.date} onChange={(event) => updateDay(day.id, "date", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field><Field label="Lieu"><input value={day.location} onChange={(event) => updateDay(day.id, "location", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field><Field label="Titre"><input value={day.title} onChange={(event) => updateDay(day.id, "title", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field><Field label="Description"><textarea value={day.description} onChange={(event) => updateDay(day.id, "description", event.target.value)} rows={3} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field><Field label="Détails"><textarea value={day.details} onChange={(event) => updateDay(day.id, "details", event.target.value)} rows={2} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field></div>}</div>))}</section></div></main>;
+  return (
+    <main className="min-h-screen bg-[#eef1f3] text-[#132b3c]">
+      <header className="sticky top-0 z-40 flex h-[72px] items-center justify-between bg-[#102c3d] px-5 text-white">
+        <div>
+          <p className="font-serif text-[21px]">ramco</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#a9c6d0]">Travel atelier · Tunis</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {user && <span className="hidden text-xs sm:inline">{user.login}</span>}
+          <button onClick={downloadPdf} className="rounded-xl bg-[#f6bb65] px-4 py-2 text-sm font-bold text-[#102c3d]">Télécharger le PDF</button>
+        </div>
+      </header>
+
+      <div className="mx-auto grid max-w-[1500px] grid-cols-1 gap-5 p-4 lg:grid-cols-[420px_minmax(0,1fr)]">
+        <aside className="rounded-[28px] bg-[#f8fafb] p-5 shadow-[0_10px_30px_rgba(18,52,70,0.08)]">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="font-serif text-2xl">Votre itinéraire</h2>
+            <button onClick={addDay} className="rounded-xl bg-[#123446] px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white">+ Jour</button>
+          </div>
+
+          <div className="space-y-4">
+            <Field label="Titre"><input value={trip.title} onChange={(event) => updateTrip("title", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field>
+            <Field label="Destination"><input value={trip.destination} onChange={(event) => updateTrip("destination", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Départ"><input type="date" value={trip.startDate} onChange={(event) => updateTrip("startDate", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field>
+              <Field label="Retour"><input type="date" value={trip.endDate} onChange={(event) => updateTrip("endDate", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field>
+            </div>
+
+            <Field label="Voyageurs"><input value={trip.travellers} onChange={(event) => updateTrip("travellers", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field>
+            <Field label="Arrivée"><input value={trip.arrival} onChange={(event) => updateTrip("arrival", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field>
+            <Field label="Retour / détails"><input value={trip.returnDetails} onChange={(event) => updateTrip("returnDetails", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field>
+            <Field label="Message d’accueil"><textarea value={trip.welcome} onChange={(event) => updateTrip("welcome", event.target.value)} rows={3} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field>
+            <Field label="Ambiance"><select value={trip.tone} onChange={(event) => updateTrip("tone", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5"><option>{trip.tone}</option>{Object.keys(tones).filter((tone) => tone !== trip.tone).map((tone) => <option key={tone}>{tone}</option>)}</select></Field>
+          </div>
+        </aside>
+
+        <section className="space-y-5 rounded-[28px] bg-[#f8fafb] p-5 shadow-[0_10px_30px_rgba(18,52,70,0.08)]">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#7c9296]">Brochure</p>
+              <h2 className="font-serif text-3xl">{trip.title}</h2>
+            </div>
+            <span className="rounded-full bg-[#ebf5f0] px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-[#1e6e4e]">{duration} jours</span>
+          </div>
+
+          {notice && <div className="rounded-xl border border-[#f6d0a3] bg-[#fff8ee] px-3 py-2 text-sm text-[#7d4a16]">{notice}</div>}
+
+          <div className="rounded-[26px] bg-white p-5 shadow-[0_8px_24px_rgba(18,52,70,0.05)]">
+            <div className="mb-5 border-b border-[#e4eaec] pb-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#7c9296]">Ramco · Tunis</p>
+              <h3 className="mt-2 font-serif text-4xl">{trip.title}</h3>
+              <p className="mt-2 text-[#4b6875]">{trip.destination} · {duration} jours · {trip.travellers}</p>
+            </div>
+            <p className="mb-5 text-[15px] leading-7 text-[#294454]">{trip.welcome}</p>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-2xl bg-[#eef6f8] p-3">
+                <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#7c9296]">Arrivée</span>
+                <span>{trip.arrival}</span>
+              </div>
+              <div className="rounded-2xl bg-[#eef6f8] p-3">
+                <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#7c9296]">Retour</span>
+                <span>{trip.returnDetails}</span>
+              </div>
+            </div>
+          </div>
+
+          {trip.days.map((day) => (
+            <div
+              key={day.id}
+              className={`overflow-hidden rounded-[24px] border ${openDay === day.id ? "border-[#d7e0e3] bg-white" : "border-transparent bg-[#edf2f3]"}`}
+            >
+              <button
+                onClick={() => setOpenDay(openDay === day.id ? 0 : day.id)}
+                className="flex w-full items-center justify-between gap-4 p-4 text-left"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[20px] border border-[#e6d7c7] bg-[linear-gradient(135deg,#f8f1e7_0%,#efe4d2_100%)] text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                    <div className="leading-[1.05]">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#7c5a3d]">Jour</div>
+                      <div className="mt-1 text-2xl font-serif text-[#123446]">{day.id}</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#7c9296]">Étape</p>
+                    <h4 className="mt-1 font-serif text-2xl text-[#123446]">{day.title}</h4>
+                  </div>
+                </div>
+
+                <span className="text-xs font-bold uppercase tracking-[0.14em] text-[#7c9296]">{dateLabel(day.date)}</span>
+              </button>
+
+              {openDay === day.id && (
+                <div className="border-t border-[#e4eaec] p-4 space-y-4">
+                  <Field label="Date"><input type="date" value={day.date} onChange={(event) => updateDay(day.id, "date", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field>
+                  <Field label="Lieu"><input value={day.location} onChange={(event) => updateDay(day.id, "location", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field>
+                  <Field label="Titre"><input value={day.title} onChange={(event) => updateDay(day.id, "title", event.target.value)} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field>
+                  <Field label="Description"><textarea value={day.description} onChange={(event) => updateDay(day.id, "description", event.target.value)} rows={3} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field>
+                  <Field label="Détails"><textarea value={day.details} onChange={(event) => updateDay(day.id, "details", event.target.value)} rows={2} className="w-full rounded-xl border border-[#d7e0e3] bg-white p-2.5" /></Field>
+                </div>
+              )}
+            </div>
+          ))}
+        </section>
+      </div>
+    </main>
+  );
 }
 
 function escapeHtml(value: string) { return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character] || character)); }
